@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Hace que iOS anuncie la sesión como reproducción de video al abrir el
+	     selector AirPlay, desde el primer momento de vida de la app. -->
+	<key>AVInitialRouteSharingPolicy</key>
+	<string>LongFormVideo</string>
+	<!-- Añadidos junto al Info.plist generado por Xcode (INFOPLIST_FILE +
+	     GENERATE_INFOPLIST_FILE=YES se combinan) solo para lo que un
+	     INFOPLIST_KEY_* de build setting no puede expresar: arrays/dicts.
+	     Necesarios para el emparejamiento y la reproducción por red local. -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Kerter+ busca tu Fire TV, Google TV o dispositivo Cast en la misma red Wi-Fi para vincular la cuenta y reproducir video.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_deportv._tcp</string>
+		<string>_googlecast._tcp</string>
+		<string>_CC1AD845._googlecast._tcp</string>
+	</array>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+</dict>
+</plist>
