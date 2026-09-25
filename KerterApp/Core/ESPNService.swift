@@ -252,7 +252,7 @@ enum ESPNService {
 
     /// Ligas donde buscar cuando el backend no dice de cuál es el partido.
     private static let fallbackSlugs = ["esp.1", "eng.1", "uefa.champions",
-                                        "ita.1", "ger.1", "fra.1"]
+                                        "ita.1", "ger.1", "fra.1", "uefa.nations"]
 
     /// Busca en ESPN el partido "local vs visitante" para robarle escudos,
     /// colores y marcador. `league` es el texto que da el backend de Kerter.
@@ -319,7 +319,10 @@ enum ESPNService {
         guard let raw = name, !raw.isEmpty else { return nil }
         let n = normalize(raw)
         let table: [(String, String)] = [
+            // Antes que "naciones" y "champions": "Liga de Naciones Concacaf".
+            ("naciones concacaf", "concacaf.nations.league"), ("concacaf nations", "concacaf.nations.league"),
             ("champions", "uefa.champions"), ("conference", "uefa.europa.conf"),
+            ("nations league", "uefa.nations"), ("liga de naciones", "uefa.nations"),
             ("europa", "uefa.europa"), ("copa del rey", "esp.copa_del_rey"),
             ("supercopa", "esp.super_cup"), ("laliga", "esp.1"), ("la liga", "esp.1"),
             ("espana", "esp.1"), ("premier", "eng.1"), ("fa cup", "eng.fa"),
@@ -351,6 +354,9 @@ enum ESPNService {
     /// de club — también útil fuera de este archivo (p. ej. para priorizar
     /// el hero por equipo, sin depender del formato exacto del backend).
     static func similar(_ a: String, _ b: String) -> Bool {
+        // Selecciones: "Francia" (Kerter) y "France" (ESPN) son la misma si
+        // comparten código FIFA; y "Irlanda" no es "Irlanda del Norte".
+        if let codeA = FIFARanking.code(for: a), let codeB = FIFARanking.code(for: b) { return codeA == codeB }
         let x = normalize(a), y = normalize(b)
         guard x.count > 2, y.count > 2 else { return false }
         return x == y || x.contains(y) || y.contains(x)
@@ -528,9 +534,9 @@ enum ESPNService {
     /// Todos los equipos que participan en una competición, con su color de
     /// marca — una sola petición para todo el plantel (a diferencia de pedir
     /// el perfil equipo por equipo).
-    static func teams(league: String) async -> [TeamInfo] {
+    static func teams(league: String, limit: Int = 50) async -> [TeamInfo] {
         guard let url = URL(string:
-            "https://site.api.espn.com/apis/site/v2/sports/soccer/\(league)/teams?limit=50") else { return [] }
+            "https://site.api.espn.com/apis/site/v2/sports/soccer/\(league)/teams?limit=\(limit)") else { return [] }
         guard let (data, _) = try? await URLSession.shared.data(from: url),
               let feed = try? JSONDecoder().decode(TeamsFeed.self, from: data) else { return [] }
         let entries = feed.sports.first?.leagues.first?.teams ?? []
@@ -589,6 +595,22 @@ enum ESPNService {
         return bigClubs.compactMap { ref in
             guard let info = byLeague[ref.league]?.first(where: { $0.id == ref.id }) else { return nil }
             return FeaturedTeam(team: info, competition: champions)
+        }
+    }
+
+    /// Selecciones del riel "Equipos" de Inicio (las primeras del ranking FIFA
+    /// grabado en la app + Cuba), con el escudo y el id reales de ESPN. Se
+    /// abren bajo "Amistosos": de ahí `TeamDetailView` descubre su Nations
+    /// League (vía el perfil) y junta ambos calendarios.
+    static func countryTeams() async -> [FeaturedTeam] {
+        let all = await teams(league: "fifa.friendly", limit: 300)
+        let byCode = Dictionary(all.compactMap { team in team.abbreviation.map { ($0.uppercased(), team) } },
+                                uniquingKeysWith: { first, _ in first })
+        return FIFARanking.featured.compactMap { entry in
+            guard let team = byCode[entry.code] else { return nil }
+            let info = TeamInfo(id: team.id, name: entry.name, abbreviation: entry.code,
+                                logo: team.logo, colorHex: team.colorHex)
+            return FeaturedTeam(team: info, competition: .internationalFriendlies)
         }
     }
 

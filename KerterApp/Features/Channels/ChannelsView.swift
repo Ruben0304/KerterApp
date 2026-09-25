@@ -30,6 +30,14 @@ enum AppSection: String, Hashable, Identifiable {
     }
 }
 
+/// Qué equipos lista el riel "Equipos" de Inicio.
+enum TeamsMode: String, CaseIterable, Identifiable {
+    case clubs, countries
+
+    var id: String { rawValue }
+    var title: String { self == .clubs ? "Clubes" : "Países" }
+}
+
 /// Pantallas que se abren empujadas en la pila de navegación (en vez de
 /// dentro de la barra lateral): así el sistema pone su propia barra y el
 /// botón "Atrás" nativo —cristal líquido de macOS 26 / iOS 26 incluido— sin
@@ -60,6 +68,10 @@ struct MainView: View {
     @AppStorage(PlaybackSettings.previewsKey) private var previewsEnabled = PlaybackSettings.defaultPreviews
     /// Grandes equipos del riel "Equipos" de Inicio (Barça, Madrid, Bayern…).
     @State private var bigClubTeams: [ESPNService.FeaturedTeam] = []
+    /// Selecciones del mismo riel: las primeras del ranking FIFA y Cuba.
+    @State private var countryTeams: [ESPNService.FeaturedTeam] = []
+    /// Qué muestra el riel "Equipos": clubes o selecciones. Se recuerda entre sesiones.
+    @AppStorage("home.teamsMode") private var teamsModeRaw = TeamsMode.clubs.rawValue
     @FocusState private var searchFocused: Bool
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.openURL) private var openURL
@@ -121,6 +133,7 @@ struct MainView: View {
         }
             .task { await vm.load() }
             .task { bigClubTeams = await ESPNService.bigClubTeams() }
+            .task { countryTeams = await ESPNService.countryTeams() }
             .onChange(of: section) { _, _ in
                 matchFilter = nil
                 competitionPath = NavigationPath()
@@ -673,13 +686,24 @@ struct MainView: View {
     /// riel "Equipos" de dentro de una competición): al tocar uno se junta el
     /// calendario de su competición doméstica y europea.
     private var bigClubsRow: some View {
-        Group {
-            if !bigClubTeams.isEmpty {
+        let mode = TeamsMode(rawValue: teamsModeRaw) ?? .clubs
+        let teams = mode == .clubs ? bigClubTeams : countryTeams
+        return Group {
+            if !bigClubTeams.isEmpty || !countryTeams.isEmpty {
                 VStack(alignment: .leading, spacing: 0) {
-                    SectionHeader(title: "Equipos").padding(.horizontal, hPad)
+                    HStack(spacing: 16) {
+                        SectionHeader(title: "Equipos")
+                        Picker("Equipos", selection: $teamsModeRaw) {
+                            ForEach(TeamsMode.allCases) { Text($0.title).tag($0.rawValue) }
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .frame(width: 190)
+                    }
+                    .padding(.horizontal, hPad)
                     ScrollView(.horizontal, showsIndicators: false) {
                         LazyHStack(spacing: 18) {
-                            ForEach(bigClubTeams) { featured in
+                            ForEach(teams) { featured in
                                 NavigationLink(value: TeamNavTarget(team: featured.team,
                                                                     competition: featured.competition,
                                                                     combineCompetitions: true)) {

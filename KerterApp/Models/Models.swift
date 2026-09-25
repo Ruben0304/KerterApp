@@ -244,6 +244,7 @@ struct Competition: Identifiable, Hashable {
 
     static let featured: [Competition] = [
         .init("uefa.champions", "Champions League", logo: espnLogo(2), brand: 0x0A2A8C),
+        .init("uefa.nations", "Nations League", logo: espnLogo(2395), brand: 0x0F7A8A),
         .init("esp.1", "LaLiga", logo: espnLogo(15), brand: 0xFF4B44),
         .init("eng.1", "Premier League", logo: espnLogo(23), brand: 0x5B1F8F),
         .init("esp.copa_del_rey", "Copa del Rey", logo: espnLogo(80), brand: 0xA3172F),
@@ -269,6 +270,12 @@ struct Competition: Identifiable, Hashable {
 }
 
 extension Competition {
+    /// Competición base de las fichas de selecciones del riel "Equipos": no
+    /// sale en "Competiciones", pero ESPN publica ahí a todas las selecciones.
+    static let internationalFriendlies = Competition("fifa.friendly", "Amistosos internacionales",
+                                                    logo: "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/4.png",
+                                                    brand: 0x326295)
+
     /// Competición que corresponde al nombre de liga que da el backend o ESPN
     /// ("LaLiga", "UEFA Champions League"…).
     static func matching(league: String?) -> Competition? {

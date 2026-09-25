@@ -67,7 +67,7 @@ final class ChannelsViewModel: ObservableObject {
             .sorted { a, b in
                 let la = a.element.card.isLive ? 0 : 1, lb = b.element.card.isLive ? 0 : 1
                 if la != lb { return la < lb }
-                let ta = heroTier(for: a.element.event), tb = heroTier(for: b.element.event)
+                let ta = heroPriority(for: a.element.event), tb = heroPriority(for: b.element.event)
                 if ta != tb { return ta < tb }
                 return a.offset < b.offset
             }
@@ -77,11 +77,19 @@ final class ChannelsViewModel: ObservableObject {
 
     var hero: [Channel] { heroItems.map(\.card) }
 
-    private func heroTier(for event: LiveEvent) -> Int {
-        if isTeam(event.home, "Barcelona") || isTeam(event.away, "Barcelona") { return 0 }
-        if isTeam(event.home, "Real Madrid") || isTeam(event.away, "Real Madrid") { return 1 }
-        if inChampions(event.home) || inChampions(event.away) { return 2 }
-        return 3
+    /// Menor es antes. Clubes: Barça, Madrid, equipo de Champions. Selecciones:
+    /// por ranking FIFA (el mejor puesto de los dos equipos; a igualdad, el
+    /// peor puesto), justo detrás del Madrid y antes de la Champions.
+    private func heroPriority(for event: LiveEvent) -> Int {
+        let tier: Int
+        if isTeam(event.home, "Barcelona") || isTeam(event.away, "Barcelona") { tier = 0 }
+        else if isTeam(event.home, "Real Madrid") || isTeam(event.away, "Real Madrid") { tier = 1 }
+        else if let ranks = FIFARanking.matchRanks(home: event.home, away: event.away, league: event.league) {
+            return 2_000_000 + ranks.best * 1_000 + ranks.worst
+        }
+        else if inChampions(event.home) || inChampions(event.away) { tier = 3 }
+        else { tier = 4 }
+        return tier * 1_000_000
     }
 
     private func isTeam(_ name: String, _ target: String) -> Bool {
@@ -202,6 +210,13 @@ final class ChannelsViewModel: ObservableObject {
             f.timeZone = .current
             let assignments = try await api.fetchAssignments(date: f.string(from: Date()))
             events = LiveEvent.group(assignments)
+            #if DEBUG
+            print("[EVENTS] \(assignments.count) filas → \(events.count) partidos")
+            for e in events {
+                print("[EVENTS]", e.time ?? "--", "|", e.sport ?? "-", "|", e.league ?? "-", "|", e.title,
+                      "|", e.channels.map(\.name).joined(separator: ", "))
+            }
+            #endif
             await buildEventItems()
         } catch let APIError.http(code, _) where code == 401 {
             auth.signOut()
@@ -237,6 +252,9 @@ final class ChannelsViewModel: ObservableObject {
         await championsTask
 
         publish(items)
+        #if DEBUG
+        print("[HERO]", heroItems.map { "\($0.event.title) (live=\($0.card.isLive))" })
+        #endif
         await preloadFirstHeroCrests()
         // Los que no salieron en su liga se buscan en las demás sin retener el loader.
         let missing = items.indices.filter { infos[$0] == nil }.map { items[$0].event }
@@ -367,6 +385,9 @@ final class ChannelsViewModel: ObservableObject {
         async let champions = Self.recentFinished(league: "uefa.champions", name: "Champions League")
         let (l, c) = await (laliga, champions)
         recentMatches = (l + c).map { EventItem.highlightsOnly($0.info, league: $0.league) }
+        #if DEBUG
+        print("[RECENT]", recentMatches.map { "\($0.event.league ?? "-"): \($0.event.title)" })
+        #endif
     }
 
     private static func recentFinished(league: String, name: String,

@@ -91,7 +91,9 @@ struct LiveEvent: Identifiable, Hashable {
                 order.append(key)
                 map[key] = LiveEvent(
                     id: key, home: home, away: away,
-                    league: a.eventLeague, sport: a.eventSport, time: a.eventTime,
+                    league: a.eventLeague,
+                    sport: SportsFilterSettings.canonicalSport(a.eventSport, league: a.eventLeague),
+                    time: a.eventTime,
                     homeLogo: a.homeLogo.flatMap { $0.isEmpty ? nil : URL(string: $0) },
                     awayLogo: a.awayLogo.flatMap { $0.isEmpty ? nil : URL(string: $0) },
                     channels: []
