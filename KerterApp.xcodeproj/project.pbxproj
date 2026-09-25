@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		CA5700000000000000000001 /* GoogleCast in Frameworks */ = {isa = PBXBuildFile; platformFilter = ios; productRef = CA5700000000000000000003 /* GoogleCast */; };
+		F1C0000000000000000000B1 /* VLCKitSPM in Frameworks */ = {isa = PBXBuildFile; productRef = F1C0000000000000000000B3 /* VLCKitSPM */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,6 +42,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				CA5700000000000000000001 /* GoogleCast in Frameworks */,
+				F1C0000000000000000000B1 /* VLCKitSPM in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -84,6 +86,7 @@
 			name = KerterApp;
 			packageProductDependencies = (
 				CA5700000000000000000003 /* GoogleCast */,
+				F1C0000000000000000000B3 /* VLCKitSPM */,
 			);
 			productName = KerterApp;
 			productReference = 1A2B3C4D5E6F000000000006 /* KerterApp.app */;
@@ -115,6 +118,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				CA5700000000000000000002 /* XCRemoteSwiftPackageReference "google-cast-sdk" */,
+				F1C0000000000000000000B2 /* XCRemoteSwiftPackageReference "vlckit-spm" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 1A2B3C4D5E6F000000000003 /* Products */;
@@ -316,6 +320,14 @@
 				version = 4.8.6;
 			};
 		};
+		F1C0000000000000000000B2 /* XCRemoteSwiftPackageReference "vlckit-spm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/tylerjonesio/vlckit-spm";
+			requirement = {
+				kind = exactVersion;
+				version = 3.6.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -323,6 +335,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = CA5700000000000000000002 /* XCRemoteSwiftPackageReference "google-cast-sdk" */;
 			productName = GoogleCast;
+		};
+		F1C0000000000000000000B3 /* VLCKitSPM */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F1C0000000000000000000B2 /* XCRemoteSwiftPackageReference "vlckit-spm" */;
+			productName = VLCKitSPM;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

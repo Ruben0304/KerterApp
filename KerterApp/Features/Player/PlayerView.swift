@@ -672,7 +672,9 @@ struct PlayerView: View {
 
     private func unsupportedView(_ reason: String) -> some View {
         VStack(spacing: 14) {
-            Image(systemName: "lock.tv")
+            // OJO: "lock.tv" no existe como SF Symbol (era el
+            // "No symbol named 'lock.tv'" del log); se usa uno válido.
+            Image(systemName: "lock.fill")
                 .font(.system(size: 46))
                 .foregroundStyle(.white.opacity(0.75))
             Text(channel.name).font(.headline).foregroundStyle(.white)
@@ -697,15 +699,36 @@ struct PlayerView: View {
         #endif
 
         if channel.isDASH {
+            #if DEBUG
+            ProxyLog.log("DASH drm: hasDRM=\(channel.hasDRM) kid=\(channel.drmKeyId.map { String($0.prefix(8)) + "…" } ?? "nil") keyLen=\(channel.drmKey?.count ?? 0)")
+            #endif
             if channel.hasDRM {
-                unsupported = "Este canal transmite en DASH y además está cifrado con DRM: todavía no lo cubrimos."
+                // DASH cifrado con ClearKey: se intenta con VLC pasándole la
+                // KID/key del backend. OJO: las builds stock de VLCKit no
+                // descifran CENC; si se queda en negro, el camino fiable es
+                // que el backend re-sirva el canal como HLS (con EXT-X-KEY,
+                // que sí cubrimos con ClearKeyDelegate).
+                let kidOK = channel.drmKeyId.flatMap { DRMKeyFormat.data(from: $0) }?.count == 16
+                let keyOK = channel.drmKey.flatMap { DRMKeyFormat.data(from: $0) }?.count == 16
+                guard kidOK, keyOK else {
+                    unsupported = "Este canal DASH viene cifrado pero el backend no mandó una clave válida (kid: \(channel.drmKeyId == nil ? "falta" : "inválida"), key: \(channel.drmKey == nil ? "falta" : "inválida"))."
+                    return
+                }
+                #if canImport(VLCKit)
+                let vp = VLCDASHPlayer(url: url, clearKeyId: channel.drmKeyId, clearKey: channel.drmKey)
+                vlcPlayer = vp
+                vp.play()
+                Task { await trackVLCPlayback(vp, isEncrypted: true) }
+                #else
+                unsupported = "Este canal transmite en DASH cifrado con DRM: falta compilar con el reproductor VLC integrado."
+                #endif
                 return
             }
             #if canImport(VLCKit)
             let vp = VLCDASHPlayer(url: url)
             vlcPlayer = vp
             vp.play()
-            Task { await trackVLCPlayback(vp) }
+            Task { await trackVLCPlayback(vp, isEncrypted: false) }
             #else
             unsupported = "Este canal transmite en DASH, que AVPlayer (el reproductor nativo de Apple) no soporta. Falta compilar con el reproductor VLC integrado."
             #endif
@@ -825,6 +848,18 @@ struct PlayerView: View {
             let session = AVContentKeySession(keySystem: .clearKey)
             session.setDelegate(delegate, queue: .main)
             session.addContentKeyRecipient(asset)
+            ProxyLog.log("ClearKey setup: url=\(url.absoluteString) kid=\(channel.drmKeyId ?? "nil") keyLen=\(channel.drmKey?.count ?? 0)")
+            #if DEBUG
+            // Volcado del EXT-X-KEY real que ve iOS: revela METHOD y KEYFORMAT,
+            // que es lo que decide si la ContentKeySession se activa o no.
+            Task.detached {
+                if let text = try? String(contentsOf: url) {
+                    for line in text.split(whereSeparator: \.isNewline) where line.hasPrefix("#EXT-X-KEY") {
+                        ProxyLog.log("ClearKey manifest: \(line)")
+                    }
+                }
+            }
+            #endif
             // Se guardan en @State: si se liberan antes de tiempo, AVFoundation
             // deja de poder responder a la solicitud de clave.
             contentKeySession = session
@@ -1246,9 +1281,28 @@ struct PlayerView: View {
     #if canImport(VLCKit)
     /// Sondeo simple del estado de reproducción para los canales DASH (VLC no
     /// nos da un stream de estado tipo KVO tan cómodo como `AVPlayerItem`).
-    private func trackVLCPlayback(_ vp: VLCDASHPlayer) async {
+    /// Si en ~20 s nunca llega a reproducir, se informa en vez de dejar la
+    /// pantalla en negro: casi seguro la build de VLC no descifra CENC y hace
+    /// falta que el backend lo re-sirva como HLS.
+    private func trackVLCPlayback(_ vp: VLCDASHPlayer, isEncrypted: Bool) async {
+        var ticks = 0
+        var everPlaying = false
         while !Task.isCancelled, vlcPlayer != nil {
-            vlcIsPlaying = vp.isPlaying
+            let playing = vp.isPlaying
+            vlcIsPlaying = playing
+            everPlaying = everPlaying || playing
+            ticks += 1
+            if !everPlaying, ticks >= 40 {
+                ProxyLog.log("VLC DASH: sin reproducir tras 20 s (cifrado=\(isEncrypted))")
+                vp.stop()
+                vlcPlayer = nil
+                if isEncrypted {
+                    unsupported = "VLC no pudo abrir este DASH cifrado (esta build no descifra CENC con ClearKey). Pide al backend una versión HLS del canal."
+                } else {
+                    unsupported = "VLC no pudo abrir este DASH (revisa la URL o la conexión)."
+                }
+                return
+            }
             try? await Task.sleep(for: .milliseconds(500))
         }
     }

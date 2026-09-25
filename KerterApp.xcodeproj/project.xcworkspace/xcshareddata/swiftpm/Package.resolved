@@ -1,5 +1,5 @@
 {
-  "originHash" : "300e6c85ec4fc774ac3f9525fa942dad932d839f3b168ec375a778cc2a715ea6",
+  "originHash" : "09c375cb6499a0b9b91b8947428f9179d36ca9ff11dddc8e9088ce5ccc869ed6",
   "pins" : [
     {
       "identity" : "google-cast-sdk",
@@ -8,6 +8,15 @@
       "state" : {
         "revision" : "887df6bfbae15e2887556a7268806649ead37fe9",
         "version" : "4.8.6"
+      }
+    },
+    {
+      "identity" : "vlckit-spm",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/tylerjonesio/vlckit-spm",
+      "state" : {
+        "revision" : "e932bbd488872fdb74f6654d28c2f291eae03daf",
+        "version" : "3.6.0"
       }
     }
   ],

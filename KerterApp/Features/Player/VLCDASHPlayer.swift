@@ -11,8 +11,24 @@ import VLCKit
 final class VLCDASHPlayer {
     let mediaPlayer = VLCMediaPlayer()
 
-    init(url: URL) {
-        mediaPlayer.media = VLCMedia(url: url)
+    init(url: URL, clearKeyId: String? = nil, clearKey: String? = nil) {
+        let media = VLCMedia(url: url)
+        // Mejor esfuerzo: se le pasa la ClearKey al motor por si la build
+        // de VLC sabe descifrar CENC (las builds stock la ignoran sin
+        // romperse; los forks con descifrado CENC usan estas opciones).
+        // Se registra en el log para diagnosticar si el backend mandó clave.
+        if let kid = clearKeyId?.trimmingCharacters(in: .whitespacesAndNewlines),
+           let key = clearKey?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !kid.isEmpty, !key.isEmpty {
+            ProxyLog.log("VLC DASH: con ClearKey kid=\(kid.prefix(8))… keyLen=\(key.count)")
+            media.addOption(":cenc-kid=\(kid)")
+            media.addOption(":cenc-key=\(key)")
+            media.addOption(":decryption-key=\(key)")
+            media.addOption(":http-user-agent=AppleCoreMedia/1.0.0 KerterApp")
+        } else {
+            ProxyLog.log("VLC DASH: sin ClearKey (canal en abierto o sin clave del backend)")
+        }
+        mediaPlayer.media = media
     }
 
     var isPlaying: Bool { mediaPlayer.isPlaying }

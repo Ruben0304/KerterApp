@@ -31,6 +31,16 @@ extension KeyedDecodingContainer where Key == AnyKey {
     }
 }
 
+/// Objeto DRM anidado (`"drm": {"kid": …, "key": …}`): prueba las claves
+/// indicadas dentro del sub-objeto y devuelve el primer valor no vacío.
+func nestedDRM(_ c: KeyedDecodingContainer<AnyKey>, keys: [String]) -> String? {
+    for parent in ["drm", "drmInfo", "clearKey", "clearkey", "license"] {
+        guard let nested = try? c.nestedContainer(keyedBy: AnyKey.self, forKey: AnyKey(parent)) else { continue }
+        if let v = nested.firstString(keys) { return v }
+    }
+    return nil
+}
+
 // MARK: - Usuario
 
 struct User: Codable, Identifiable, Hashable {
@@ -181,8 +191,20 @@ struct Channel: Identifiable, Hashable, Decodable {
         dateLabel = c.firstString(["dateLabel", "matchDate"])
         isFinal = c.firstBool(["isFinal", "finished", "completed"]) ?? false
         playerType = c.firstString(["player_type", "playerType"])
-        drmKeyId = c.firstString(["drm_key1_id", "drmKeyId"])
-        drmKey = c.firstString(["drm_key1", "drmKey"])
+        // Claves ClearKey: el backend las manda como `drm_key1_id`/`drm_key1`,
+        // pero se aceptan alias (kid/key en hex, base64 o UUID) y un objeto
+        // anidado `drm: {kid, key}` por si cambia la forma del JSON.
+        // Se guardan en hex canónico para que el reproductor no tenga que
+        // adivinar el formato después.
+        let rawKid = c.firstString(["drm_key1_id", "drmKey1Id", "drmKeyId", "drm_key_id",
+                                    "drmKid", "kid", "KID", "clearkey_kid", "clearkeyKid",
+                                    "keyId", "key_id"])
+            ?? DRMKeyFormat.canonicalHex(from: nestedDRM(c, keys: ["kid", "KID", "keyId", "key_id"]) ?? "")
+        let rawKey = c.firstString(["drm_key1", "drmKey1", "drmKey", "drm_key",
+                                    "key", "KEY", "clearkey_key", "clearkeyKey", "contentKey"])
+            ?? DRMKeyFormat.canonicalHex(from: nestedDRM(c, keys: ["key", "KEY", "contentKey"]) ?? "")
+        drmKeyId = rawKid.flatMap { DRMKeyFormat.canonicalHex(from: $0) ?? $0 }
+        drmKey = rawKey.flatMap { DRMKeyFormat.canonicalHex(from: $0) ?? $0 }
         isFeatured = c.firstBool(["featured", "isFeatured", "highlighted"]) ?? false
 
         if let b = c.firstBool(["isLive", "live", "online"]) {
