@@ -1,0 +1,101 @@
+<Page
+    x:Class="KerterWin.Pages.PlayerPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vlc="using:LibVLCSharp.Platforms.Windows">
+    <Grid x:Name="Root" Background="Black" PointerMoved="OnPointerMoved" Tapped="OnRootTapped"
+          DoubleTapped="OnRootDoubleTapped">
+        <vlc:VideoView x:Name="Video" Initialized="OnVideoInitialized" />
+
+        <ProgressRing x:Name="Spinner" Width="56" Height="56" IsActive="False"
+                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+
+        <StackPanel x:Name="MessagePanel" Visibility="Collapsed" Spacing="12" MaxWidth="460"
+                    HorizontalAlignment="Center" VerticalAlignment="Center">
+            <FontIcon Glyph="&#xE7BA;" FontSize="36" Foreground="White" />
+            <TextBlock x:Name="MessageText" Foreground="White" TextWrapping="Wrap" TextAlignment="Center"
+                       FontSize="16" />
+            <Button x:Name="RetryButton" Content="Reintentar" HorizontalAlignment="Center" Click="OnRetry" />
+        </StackPanel>
+
+        <Border x:Name="SourceDownBanner" Visibility="Collapsed" Background="#CC000000" CornerRadius="10"
+                Padding="14,8" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,70,0,0">
+            <TextBlock Foreground="White" Text="Este canal no está emitiendo ahora mismo (fallo en su origen)." />
+        </Border>
+
+        <Grid x:Name="Controls">
+            <!-- Barra superior -->
+            <Grid VerticalAlignment="Top" Padding="16,12,16,40">
+                <Grid.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#CC000000" Offset="0" />
+                        <GradientStop Color="#00000000" Offset="1" />
+                    </LinearGradientBrush>
+                </Grid.Background>
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <Button Click="OnBack" ToolTipService.ToolTip="Volver" Background="Transparent" BorderThickness="0">
+                        <FontIcon Glyph="&#xE72B;" />
+                    </Button>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock x:Name="TitleText" FontWeight="SemiBold" FontSize="16" Foreground="White" />
+                        <TextBlock x:Name="ChannelText" FontSize="12" Foreground="#B3FFFFFF" />
+                    </StackPanel>
+                </StackPanel>
+                <Button x:Name="ChannelsButton" HorizontalAlignment="Right" Background="Transparent" BorderThickness="0"
+                        ToolTipService.ToolTip="Cambiar de canal">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE8EF;" />
+                        <TextBlock Text="Canales" />
+                    </StackPanel>
+                    <Button.Flyout>
+                        <Flyout x:Name="ChannelsFlyout" Placement="BottomEdgeAlignedRight">
+                            <ScrollViewer MaxHeight="420" Width="320">
+                                <StackPanel x:Name="ChannelsList" Spacing="4" />
+                            </ScrollViewer>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+            </Grid>
+
+            <!-- Barra inferior -->
+            <Grid VerticalAlignment="Bottom" Padding="16,40,16,14">
+                <Grid.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#00000000" Offset="0" />
+                        <GradientStop Color="#CC000000" Offset="1" />
+                    </LinearGradientBrush>
+                </Grid.Background>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Button x:Name="PlayPauseButton" Click="OnPlayPause" Background="Transparent" BorderThickness="0">
+                    <FontIcon x:Name="PlayPauseIcon" Glyph="&#xE769;" />
+                </Button>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="8,0,0,0">
+                    <Button x:Name="MuteButton" Click="OnMute" Background="Transparent" BorderThickness="0">
+                        <FontIcon x:Name="MuteIcon" Glyph="&#xE767;" />
+                    </Button>
+                    <Slider x:Name="VolumeSlider" Width="110" Minimum="0" Maximum="100" VerticalAlignment="Center"
+                            ValueChanged="OnVolumeChanged" />
+                </StackPanel>
+                <TextBlock x:Name="StatusText" Grid.Column="2" Foreground="#B3FFFFFF" FontSize="12"
+                           VerticalAlignment="Center" HorizontalAlignment="Center" />
+                <Button x:Name="QualityButton" Grid.Column="3" Background="Transparent" BorderThickness="0"
+                        Visibility="Collapsed" ToolTipService.ToolTip="Calidad">
+                    <FontIcon Glyph="&#xE713;" />
+                    <Button.Flyout>
+                        <MenuFlyout x:Name="QualityMenu" />
+                    </Button.Flyout>
+                </Button>
+                <Button Grid.Column="4" Click="OnFullscreen" Background="Transparent" BorderThickness="0"
+                        ToolTipService.ToolTip="Pantalla completa (F)">
+                    <FontIcon x:Name="FullscreenIcon" Glyph="&#xE740;" />
+                </Button>
+            </Grid>
+        </Grid>
+    </Grid>
+</Page>
